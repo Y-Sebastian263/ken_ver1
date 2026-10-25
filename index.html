@@ -258,8 +258,9 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     $("#nSongs").textContent = ready.length;
     const q = norm($("#qSongs").value);
     const hits = q ? ready.filter(s => norm(s.title+s.artist).includes(q)) : ready;
-    $("#songsList").innerHTML = hits.length ? hits.map(s => `
-      <div class="row"><div style="min-width:0"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist)}${s.year?`<span class="yr">${esc(s.year)}</span>`:""}</div></div></div>`).join("")
+    const LIM=200, more=hits.length>LIM ? `<div class="empty"><strong>ほか ${hits.length-LIM} 曲</strong>曲名やアーティストで検索すると絞り込めます。</div>` : "";
+    $("#songsList").innerHTML = hits.length ? hits.slice(0,LIM).map(s => `
+      <div class="row"><div style="min-width:0"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist)}${s.year?`<span class="yr">${esc(s.year)}</span>`:""}</div></div></div>`).join("") + more
       : ready.length ? `<div class="empty"><strong>「${esc($("#qSongs").value)}」は見つかりませんでした</strong>練習中の曲や新しい曲としてリクエストできます。</div>`
       : `<div class="empty"><strong>まだ曲が登録されていません</strong>配信者が管理画面から曲を追加すると、ここに並びます。</div>`;
 
@@ -312,7 +313,7 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     $("#anSongs").textContent = ready.length;
     const q = norm($("#qAdmin").value);
     const hits = q ? ready.filter(s => norm(s.title+s.artist+(s.jasrac||"")+(s.nextone||"")).includes(q)) : ready;
-    $("#aSongsList").innerHTML = hits.length ? hits.map(s => songRowAdmin(s)).join("")
+    $("#aSongsList").innerHTML = hits.length ? hits.slice(0,200).map(s => songRowAdmin(s)).join("") + (hits.length>200 ? `<div class="empty"><strong>ほか ${hits.length-200} 曲</strong>検索すると絞り込めます。</div>` : "")
       : `<div class="empty"><strong>${ready.length?"該当する曲がありません":"歌える曲はまだ0曲です"}</strong>上の「曲を追加する」か、設定タブのCSV登録から追加できます。</div>`;
 
     const ranked = requestCounts();
@@ -509,11 +510,16 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     for (const r of rows){
       const [title,artist,jasrac,nextone,kubun,year] = r;
       if(!title||!artist||existing.has(keyOf(title,artist))){ skipped++; continue; }
-      try{
-        await state.db.collection("songs").add({ title, artist, jasrac:cleanCode(jasrac), nextone:cleanCode(nextone),
-          status: /練習/.test(kubun||"") ? "practice" : "ready", year:toYear(year), createdAt:Date.now() });
-        existing.add(keyOf(title,artist)); added++;
-      }catch(err){ failed++; if(err && err.code==="quota_exceeded") break; }
+      const body = { title, artist, jasrac:cleanCode(jasrac), nextone:cleanCode(nextone),
+          status: /練習/.test(kubun||"") ? "practice" : "ready", year:toYear(year), createdAt:Date.now() };
+      let ok=false, stop=false;
+      for (let a=0; a<4 && !ok && !stop; a++){
+        try{ await state.db.collection("songs").add(body); ok=true; }
+        catch(err){ const c=err&&err.code; if(c==="quota_exceeded"){ stop=true; } else if(c==="resource_exhausted"||c==="unavailable"){ await new Promise(r=>setTimeout(r,1500*(a+1))); } else break; }
+      }
+      if (ok){ existing.add(keyOf(title,artist)); added++; } else failed++;
+      if (stop) break;
+      if ((added+skipped+failed) % 50 === 0) $("#csvMsg").textContent = `登録中… ${added+skipped+failed} / ${rows.length} 行`;
     }
     $("#csvMsg").textContent = `${added}曲を登録しました` + (skipped?`(重複・空欄で${skipped}行スキップ)`:"") + (failed?`、${failed}行は保存できませんでした`:"");
     if (added) $("#csvText").value="";
