@@ -23,7 +23,9 @@ REALITYの歌配信で使う、曲リスト・練習中ランキング・リク�
 | `requests` | `title`, `artist`, `songId`, `nickname`, `message`, `status`(`new` / `done`), `by`, `createdAt` |
 | `settings/main` | `name`(配信者名) |
 
-CSV一括登録の列順: `楽曲名,アーティスト名,JASRACコード,NexToneコード,区分`(区分は「歌える」か「練習中」)
+CSV一括登録の列順: `楽曲名,アーティスト名,JASRACコード,NexToneコード,区分,発売年`(区分は「歌える」か「練習中」、発売年は任意)
+
+`data/songs_1980-2025.csv` は1980〜2024年の定番曲345曲の下書きリストです(JASRAC・NexToneコードは空欄)。
 
 ## 動作環境について
 
