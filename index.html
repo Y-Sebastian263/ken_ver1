@@ -1,4 +1,4 @@
-<title>歌リクエスト箱</title>
+<title>Kenのデンモク</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -97,7 +97,7 @@ h2.sub{font-family:var(--f-display);font-weight:400;font-size:20px;margin:24px 0
   <header class="top">
     <div class="brand">
       <small>REALITY 歌配信</small>
-      <h1><em id="streamerName">Y</em> の歌リクエスト箱</h1>
+      <h1><em id="streamerName">Ken</em>のデンモク</h1>
     </div>
     <div class="mode" id="modeSwitch" hidden>
       <button type="button" id="modeListener" aria-pressed="true">リスナー画面</button>
@@ -220,7 +220,7 @@ h2.sub{font-family:var(--f-display);font-weight:400;font-size:20px;margin:24px 0
 (function(){
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
-  const state = { songs: [], requests: [], name: "Y", db: null, user: null, uid: null,
+  const state = { songs: [], requests: [], name: "Ken", db: null, user: null, uid: null,
     canEdit: false, canWrite: null, mode: "listener", reqMode: "pick", rf: "new", editId: null, armed: null };
 
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -367,7 +367,7 @@ h2.sub{font-family:var(--f-display);font-weight:400;font-size:20px;margin:24px 0
     try{ localStorage.setItem("utabox-mode", m); }catch(e){}
     render();
   }
-  function render(){ $("#streamerName").textContent = state.name || "Y"; renderListener(); renderAdmin(); }
+  function render(){ $("#streamerName").textContent = state.name || "Ken"; renderListener(); renderAdmin(); }
 
   // ---------- 書き込み ----------
   async function write(fn, okMsg){
@@ -486,7 +486,7 @@ h2.sub{font-family:var(--f-display);font-weight:400;font-size:20px;margin:24px 0
   });
 
   $("#setForm").addEventListener("submit", e => {
-    e.preventDefault(); const name=$("#setName").value.trim() || "Y";
+    e.preventDefault(); const name=$("#setName").value.trim() || "Ken";
     write(()=>state.db.doc("settings/main").set({name}), "配信者名を保存しました");
   });
   $("#csvFile").addEventListener("change", async e => {
@@ -540,7 +540,7 @@ h2.sub{font-family:var(--f-display);font-weight:400;font-size:20px;margin:24px 0
       () => banner("曲リストを読み込めませんでした。ページを開き直してください。"));
     db.collection("requests").onSnapshot(s => { state.requests = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); },
       () => banner("リクエストを読み込めませんでした。ページを開き直してください。"));
-    db.doc("settings/main").onSnapshot(s => { if (s.exists){ state.name = s.data().name || "Y"; $("#setName").value = state.name; } render(); });
+    db.doc("settings/main").onSnapshot(s => { if (s.exists){ state.name = s.data().name || "Ken"; $("#setName").value = state.name; } render(); });
     updateReqHint();
   })();
 })();
