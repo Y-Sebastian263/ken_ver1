@@ -1,0 +1,547 @@
+<title>歌リクエスト箱</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: 配信のセットリスト札。上部に配信者名の帯、下に用途別タブ。リスナー用と管理用を切り替え。 */
+:root{
+  --bg:#F2F0F6; --surface:#FFFFFF; --ink:#1D1A29; --muted:#6B6580; --line:#DEDAE8;
+  --accent:#D02F78; --accent-ink:#FFFFFF; --accent-soft:#FBE3EE;
+  --ready:#16806F; --ready-soft:#DDF2EE; --practice:#B26A00; --practice-soft:#FCEFD9;
+  --danger:#B42318;
+  --f-display:"Dela Gothic One","Zen Kaku Gothic New",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#15131D; --surface:#1F1C2A; --ink:#EEEAF7; --muted:#A39DB8; --line:#33304A;
+  --accent:#F0559A; --accent-ink:#1A0B12; --accent-soft:#3A1A2B;
+  --ready:#4CC9B3; --ready-soft:#16302C; --practice:#F0B24E; --practice-soft:#35281A;
+  --danger:#FF8A80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#15131D; --surface:#1F1C2A; --ink:#EEEAF7; --muted:#A39DB8; --line:#33304A;
+  --accent:#F0559A; --accent-ink:#1A0B12; --accent-soft:#3A1A2B;
+  --ready:#4CC9B3; --ready-soft:#16302C; --practice:#F0B24E; --practice-soft:#35281A;
+  --danger:#FF8A80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:8px 18px;border-bottom:2px solid var(--ink)}
+.brand small{display:block;font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(26px,6vw,38px);line-height:1.15;text-wrap:balance}
+.brand h1 em{font-style:normal;color:var(--accent)}
+.mode{display:flex;border:1.5px solid var(--ink);border-radius:999px;overflow:hidden}
+.mode button{border:0;background:transparent;color:var(--ink);font:700 13px var(--f-body);padding:6px 14px;cursor:pointer}
+.mode button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+nav.tabs{display:flex;gap:4px;margin-top:16px;overflow-x:auto}
+nav.tabs button{flex:0 0 auto;border:0;background:transparent;color:var(--muted);font:700 14px var(--f-body);padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs .n{font-family:var(--f-mono);font-size:12px;margin-left:6px;color:var(--muted);font-variant-numeric:tabular-nums}
+section.panel{padding-top:18px}
+.note{color:var(--muted);font-size:13px;margin:0 0 12px}
+.banner{background:var(--practice-soft);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:13px;margin-top:14px}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea{min-height:70px;resize:vertical}
+label.f{display:grid;gap:4px;font-size:13px;font-weight:700}
+label.f span.opt{font-weight:400;color:var(--muted)}
+.search{position:relative;margin-bottom:12px}
+.btn{border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);font:700 13px var(--f-body);padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{border-color:var(--line)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+.list{display:grid;gap:0;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.row .t{font-weight:700;font-size:16px;min-width:0;overflow-wrap:anywhere}
+.row .a{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.codes{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.code{font-family:var(--f-mono);font-size:11px;padding:1px 7px;border-radius:5px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.code b{font-weight:600;color:var(--ink);margin-left:4px}
+.code.none b{color:var(--muted);font-weight:400}
+.acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;vertical-align:2px;margin-left:6px}
+.pill.ready{background:var(--ready-soft);color:var(--ready)}
+.pill.practice{background:var(--practice-soft);color:var(--practice)}
+.pill.new{background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.rank{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.rank .no{font-family:var(--f-display);font-size:24px;text-align:center;color:var(--muted)}
+.rank:nth-child(-n+3) .no{color:var(--accent)}
+.rank .body{min-width:0}
+.bar{height:6px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.cnt{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);text-align:right}
+.cnt b{font-size:20px;color:var(--ink);display:block;line-height:1.1}
+.form{display:grid;gap:12px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:700 13px var(--f-body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.empty{padding:28px 12px;text-align:center;color:var(--muted);border:1.5px dashed var(--line);border-radius:14px;font-size:14px}
+.empty strong{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.toolbar .search{flex:1 1 220px;margin:0}
+.msg{font-size:13px;margin-top:2px;color:var(--muted);overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+details.box{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:14px}
+details.box summary{cursor:pointer;font-weight:700}
+details.box[open] summary{margin-bottom:12px}
+.tbl-wrap{overflow-x:auto}
+h2.sub{font-family:var(--f-display);font-weight:400;font-size:20px;margin:24px 0 8px}
+@media (prefers-reduced-motion:no-preference){.row,.rank{transition:background .15s}.row:hover,.rank:hover{background:var(--surface)}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <small>REALITY 歌配信</small>
+      <h1><em id="streamerName">Y</em> の歌リクエスト箱</h1>
+    </div>
+    <div class="mode" id="modeSwitch" hidden>
+      <button type="button" id="modeListener" aria-pressed="true">リスナー画面</button>
+      <button type="button" id="modeAdmin" aria-pressed="false">管理画面</button>
+    </div>
+  </header>
+
+  <div id="statusBanner" class="banner" hidden></div>
+
+  <!-- ===== リスナー画面 ===== -->
+  <div id="listenerView">
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="songs" aria-selected="true">歌える曲<span class="n" id="nSongs">0</span></button>
+      <button role="tab" data-tab="practice" aria-selected="false">練習中ランキング<span class="n" id="nPractice">0</span></button>
+      <button role="tab" data-tab="request" aria-selected="false">リクエストする</button>
+    </nav>
+
+    <section class="panel" data-panel="songs">
+      <div class="search"><input id="qSongs" type="search" placeholder="曲名・アーティストで検索" autocomplete="off"></div>
+      <div id="songsList" class="list"></div>
+    </section>
+
+    <section class="panel" data-panel="practice" hidden>
+      <p class="note">いま練習中の曲です。リクエストが多い曲から優先して練習します。</p>
+      <div id="practiceRank"></div>
+    </section>
+
+    <section class="panel" data-panel="request" hidden>
+      <form id="reqForm" class="form">
+        <div class="seg" role="group" aria-label="リクエストの種類">
+          <button type="button" id="reqModePick" aria-pressed="true">練習中の曲から選ぶ</button>
+          <button type="button" id="reqModeFree" aria-pressed="false">新しい曲をリクエスト</button>
+        </div>
+        <label class="f" id="pickWrap">練習中の曲
+          <select id="reqSong"></select>
+        </label>
+        <div class="grid2" id="freeWrap" hidden>
+          <label class="f">曲名<input id="reqTitle" maxlength="100"></label>
+          <label class="f">アーティスト<input id="reqArtist" maxlength="100"></label>
+        </div>
+        <label class="f">ニックネーム<input id="reqName" maxlength="40" placeholder="REALITYでの名前"></label>
+        <label class="f">ひとこと <span class="opt">(任意)</span><textarea id="reqMsg" maxlength="200" placeholder="この曲が好きな理由など"></textarea></label>
+        <div><button class="btn primary" type="submit" id="reqSubmit">リクエストを送る</button></div>
+        <p class="msg" id="reqHint"></p>
+      </form>
+    </section>
+  </div>
+
+  <!-- ===== 管理画面 ===== -->
+  <div id="adminView" hidden>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-atab="aSongs" aria-selected="true">歌える曲<span class="n" id="anSongs">0</span></button>
+      <button role="tab" data-atab="aPractice" aria-selected="false">練習中<span class="n" id="anPractice">0</span></button>
+      <button role="tab" data-atab="aReq" aria-selected="false">リクエスト<span class="n" id="anReq">0</span></button>
+      <button role="tab" data-atab="aSettings" aria-selected="false">設定</button>
+    </nav>
+
+    <section class="panel" data-apanel="aSongs">
+      <details class="box" id="addBox">
+        <summary id="addSummary">曲を追加する</summary>
+        <form id="songForm" class="form" style="border:0;padding:0">
+          <div class="grid2">
+            <label class="f">楽曲名<input id="sTitle" required maxlength="120"></label>
+            <label class="f">アーティスト名<input id="sArtist" required maxlength="120"></label>
+            <label class="f">JASRACコード <span class="opt">(作品コード)</span><input id="sJasrac" maxlength="20" placeholder="例 123-4567-8" inputmode="numeric"></label>
+            <label class="f">NexToneコード <span class="opt">(作品コード)</span><input id="sNextone" maxlength="20" placeholder="例 N12345678"></label>
+          </div>
+          <label class="f">区分
+            <select id="sStatus"><option value="ready">歌える曲</option><option value="practice">練習中(リクエスト受付)</option></select>
+          </label>
+          <div class="acts" style="justify-content:flex-start">
+            <button class="btn primary" type="submit" id="songSave">追加する</button>
+            <button class="btn ghost" type="button" id="songCancel" hidden>編集をやめる</button>
+          </div>
+        </form>
+      </details>
+      <div class="toolbar">
+        <div class="search"><input id="qAdmin" type="search" placeholder="曲名・アーティスト・コードで検索" autocomplete="off"></div>
+      </div>
+      <div id="aSongsList" class="list"></div>
+    </section>
+
+    <section class="panel" data-apanel="aPractice" hidden>
+      <p class="note">リクエスト数の多い順です。歌えるようになったら「歌える曲へ」で移します。</p>
+      <div id="aPracticeList" class="list"></div>
+    </section>
+
+    <section class="panel" data-apanel="aReq" hidden>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="絞り込み">
+          <button type="button" data-rf="new" aria-pressed="true">未対応</button>
+          <button type="button" data-rf="done" aria-pressed="false">対応済み</button>
+          <button type="button" data-rf="all" aria-pressed="false">すべて</button>
+        </div>
+      </div>
+      <div id="aReqList" class="list"></div>
+    </section>
+
+    <section class="panel" data-apanel="aSettings" hidden>
+      <form id="setForm" class="form">
+        <label class="f">配信者名(画面上部に表示)<input id="setName" maxlength="30"></label>
+        <div><button class="btn primary" type="submit">保存</button></div>
+      </form>
+      <h2 class="sub">CSVでまとめて登録</h2>
+      <p class="note">1行に1曲。列の順番は「楽曲名, アーティスト名, JASRACコード, NexToneコード, 区分」です。区分は「歌える」か「練習中」(空欄なら歌える)。1行目が見出しなら自動で飛ばします。</p>
+      <form id="csvForm" class="form">
+        <textarea id="csvText" style="min-height:140px;font-family:var(--f-mono);font-size:13px" placeholder="楽曲名,アーティスト名,JASRACコード,NexToneコード,区分"></textarea>
+        <div class="acts" style="justify-content:flex-start">
+          <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" style="width:auto;border:0;padding:0;background:transparent">
+          <button class="btn primary" type="submit">登録する</button>
+        </div>
+        <p class="msg" id="csvMsg"></p>
+      </form>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const state = { songs: [], requests: [], name: "Y", db: null, user: null, uid: null,
+    canEdit: false, canWrite: null, mode: "listener", reqMode: "pick", rf: "new", editId: null, armed: null };
+
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  // 全角/半角・ひらがな/カタカナ・大文字小文字の違いを吸収して検索
+  const norm = s => String(s ?? "").normalize("NFKC").toLowerCase()
+    .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[\s・\-ー]/g, "");
+  const keyOf = (t, a) => norm(t) + "|" + norm(a);
+
+  let toastTimer;
+  function toast(t){ const el=$("#toast"); el.textContent=t; el.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.hidden=true, 2600); }
+  function banner(t){ const el=$("#statusBanner"); if(!t){el.hidden=true;return;} el.textContent=t; el.hidden=false; }
+
+  const codesHTML = s => `<div class="codes">
+    <span class="code ${s.jasrac?"":"none"}">JASRAC<b>${esc(s.jasrac||"未登録")}</b></span>
+    <span class="code ${s.nextone?"":"none"}">NexTone<b>${esc(s.nextone||"未登録")}</b></span></div>`;
+
+  // ---------- 集計 ----------
+  function requestCounts(){
+    const bySong = new Map();
+    const practice = state.songs.filter(s => s.status === "practice");
+    const keyToId = new Map(state.songs.map(s => [keyOf(s.title, s.artist), s.id]));
+    for (const r of state.requests){
+      const id = (r.songId && state.songs.some(s=>s.id===r.songId)) ? r.songId : keyToId.get(keyOf(r.title, r.artist));
+      if (id) bySong.set(id, (bySong.get(id)||0) + 1);
+    }
+    return practice.map(s => ({...s, count: bySong.get(s.id)||0}))
+      .sort((a,b) => b.count - a.count || a.title.localeCompare(b.title, "ja"));
+  }
+
+  // ---------- リスナー画面 ----------
+  function renderListener(){
+    const ready = state.songs.filter(s => s.status === "ready").sort((a,b)=>a.title.localeCompare(b.title,"ja"));
+    $("#nSongs").textContent = ready.length;
+    const q = norm($("#qSongs").value);
+    const hits = q ? ready.filter(s => norm(s.title+s.artist).includes(q)) : ready;
+    $("#songsList").innerHTML = hits.length ? hits.map(s => `
+      <div class="row"><div style="min-width:0"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist)}</div></div></div>`).join("")
+      : ready.length ? `<div class="empty"><strong>「${esc($("#qSongs").value)}」は見つかりませんでした</strong>練習中の曲や新しい曲としてリクエストできます。</div>`
+      : `<div class="empty"><strong>まだ曲が登録されていません</strong>配信者が管理画面から曲を追加すると、ここに並びます。</div>`;
+
+    const ranked = requestCounts();
+    $("#nPractice").textContent = ranked.length;
+    const max = Math.max(1, ...ranked.map(r=>r.count));
+    $("#practiceRank").innerHTML = ranked.length ? ranked.map((s,i) => `
+      <div class="rank"><div class="no">${i+1}</div>
+        <div class="body"><div class="t" style="font-weight:700">${esc(s.title)}</div><div class="a" style="color:var(--muted);font-size:13px">${esc(s.artist)}</div>
+        <div class="bar"><i style="width:${Math.round(s.count/max*100)}%"></i></div></div>
+        <div class="acts" style="flex-direction:column;align-items:flex-end"><div class="cnt"><b>${s.count}</b>リクエスト</div>
+        <button class="btn ghost" type="button" data-req="${esc(s.id)}">リクエスト</button></div></div>`).join("")
+      : `<div class="empty"><strong>練習中の曲はまだありません</strong>聴きたい曲は「リクエストする」から送れます。</div>`;
+
+    const sel = $("#reqSong"); const cur = sel.value;
+    sel.innerHTML = ranked.length ? ranked.map(s => `<option value="${esc(s.id)}">${esc(s.title)} / ${esc(s.artist)}</option>`).join("")
+      : `<option value="">練習中の曲はまだありません</option>`;
+    if (ranked.some(s=>s.id===cur)) sel.value = cur;
+    updateReqHint();
+  }
+
+  function setTab(name){
+    $$("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab===name)));
+    $$("[data-panel]").forEach(p => p.hidden = p.dataset.panel !== name);
+  }
+  function setReqMode(m){
+    state.reqMode = m;
+    $("#reqModePick").setAttribute("aria-pressed", String(m==="pick"));
+    $("#reqModeFree").setAttribute("aria-pressed", String(m==="free"));
+    $("#pickWrap").hidden = m!=="pick"; $("#freeWrap").hidden = m!=="free";
+    updateReqHint();
+  }
+  function updateReqHint(){
+    const h = $("#reqHint");
+    if (!state.db){ h.textContent = "リクエストの送信には claude.ai へのサインインと、このページへの参加者(Contributor)以上の権限が必要です。"; $("#reqSubmit").disabled = true; return; }
+    if (state.canWrite === false){ h.textContent = "この画面は閲覧のみの権限です。配信者に参加者(Contributor)権限をもらうとリクエストできます。"; $("#reqSubmit").disabled = true; return; }
+    $("#reqSubmit").disabled = false;
+    if (state.reqMode==="pick" && state.uid){
+      const id = $("#reqSong").value;
+      const mine = state.requests.some(r => r.songId===id && r.by===state.uid);
+      h.textContent = mine ? "この曲はリクエスト済みです。もう一度送ると1票追加されます。" : "";
+    } else h.textContent = "";
+  }
+
+  // ---------- 管理画面 ----------
+  function renderAdmin(){
+    if (!state.canEdit) return;
+    const all = [...state.songs].sort((a,b)=>a.title.localeCompare(b.title,"ja"));
+    const ready = all.filter(s=>s.status==="ready");
+    $("#anSongs").textContent = ready.length;
+    const q = norm($("#qAdmin").value);
+    const hits = q ? ready.filter(s => norm(s.title+s.artist+(s.jasrac||"")+(s.nextone||"")).includes(q)) : ready;
+    $("#aSongsList").innerHTML = hits.length ? hits.map(s => songRowAdmin(s)).join("")
+      : `<div class="empty"><strong>${ready.length?"該当する曲がありません":"歌える曲はまだ0曲です"}</strong>上の「曲を追加する」か、設定タブのCSV登録から追加できます。</div>`;
+
+    const ranked = requestCounts();
+    $("#anPractice").textContent = ranked.length;
+    $("#aPracticeList").innerHTML = ranked.length ? ranked.map(s => `
+      <div class="row"><div style="min-width:0"><div class="t">${esc(s.title)}<span class="pill practice">${s.count} 件</span></div><div class="a">${esc(s.artist)}</div>${codesHTML(s)}</div>
+      <div class="acts">
+        <button class="btn" type="button" data-act="toReady" data-id="${esc(s.id)}">歌える曲へ</button>
+        <button class="btn ghost" type="button" data-act="edit" data-id="${esc(s.id)}">編集</button>
+        ${delBtn("delSong", s.id)}
+      </div></div>`).join("")
+      : `<div class="empty"><strong>練習中の曲はありません</strong>リクエスト一覧の「練習中に追加」か、曲の追加で区分を「練習中」にすると並びます。</div>`;
+
+    const reqs = [...state.requests].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    $("#anReq").textContent = reqs.filter(r=>r.status!=="done").length;
+    const list = reqs.filter(r => state.rf==="all" || (state.rf==="done" ? r.status==="done" : r.status!=="done"));
+    const keyToSong = new Map(state.songs.map(s => [keyOf(s.title,s.artist), s]));
+    $("#aReqList").innerHTML = list.length ? list.map(r => {
+      const song = state.songs.find(s=>s.id===r.songId) || keyToSong.get(keyOf(r.title,r.artist));
+      const tag = song ? (song.status==="ready" ? '<span class="pill ready">歌える</span>' : '<span class="pill practice">練習中</span>') : '<span class="pill new">未登録の曲</span>';
+      const when = r.createdAt ? new Date(r.createdAt).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+      return `<div class="row"><div style="min-width:0">
+        <div class="t">${esc(r.title)}${tag}${r.status==="done"?'<span class="pill done">対応済み</span>':""}</div>
+        <div class="a">${esc(r.artist)} ・ ${esc(r.nickname||"名無し")} ・ ${esc(when)}</div>
+        ${r.message?`<div class="msg">「${esc(r.message)}」</div>`:""}</div>
+        <div class="acts">
+          ${!song?`<button class="btn" type="button" data-act="reqToPractice" data-id="${esc(r.id)}">練習中に追加</button>`:""}
+          <button class="btn ghost" type="button" data-act="${r.status==="done"?"reqUndo":"reqDone"}" data-id="${esc(r.id)}">${r.status==="done"?"未対応に戻す":"対応済みにする"}</button>
+          ${delBtn("delReq", r.id)}
+        </div></div>`;}).join("")
+      : `<div class="empty"><strong>${state.rf==="done"?"対応済みのリクエストはありません":"未対応のリクエストはありません"}</strong>リスナーが送ったリクエストがここに届きます。</div>`;
+  }
+  function songRowAdmin(s){
+    return `<div class="row"><div style="min-width:0"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist)}</div>${codesHTML(s)}</div>
+      <div class="acts">
+        <button class="btn ghost" type="button" data-act="toPractice" data-id="${esc(s.id)}">練習中へ</button>
+        <button class="btn ghost" type="button" data-act="edit" data-id="${esc(s.id)}">編集</button>
+        ${delBtn("delSong", s.id)}
+      </div></div>`;
+  }
+  const delBtn = (act,id) => state.armed===act+id
+    ? `<button class="btn danger" type="button" data-act="${act}" data-id="${esc(id)}" data-confirm="1">本当に削除</button>`
+    : `<button class="btn danger" type="button" data-act="${act}" data-id="${esc(id)}">削除</button>`;
+
+  function setAdminTab(name){
+    $$("[data-atab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.atab===name)));
+    $$("[data-apanel]").forEach(p => p.hidden = p.dataset.apanel !== name);
+  }
+  function setMode(m){
+    state.mode = m;
+    $("#modeListener").setAttribute("aria-pressed", String(m==="listener"));
+    $("#modeAdmin").setAttribute("aria-pressed", String(m==="admin"));
+    $("#listenerView").hidden = m!=="listener"; $("#adminView").hidden = m!=="admin";
+    try{ localStorage.setItem("utabox-mode", m); }catch(e){}
+    render();
+  }
+  function render(){ $("#streamerName").textContent = state.name || "Y"; renderListener(); renderAdmin(); }
+
+  // ---------- 書き込み ----------
+  async function write(fn, okMsg){
+    try{ await fn(); if(okMsg) toast(okMsg); }
+    catch(e){
+      const c = e && e.code;
+      toast(c==="invalid_argument" ? "保存する権限がありません" : c==="quota_exceeded" ? "保存できる件数の上限に達しました。古いリクエストを削除してください" : "保存できませんでした。少し待ってからもう一度お試しください");
+      if (c==="invalid_argument" && state.canWrite===null){ state.canWrite=false; updateReqHint(); }
+    }
+  }
+  function cleanCode(v){ return String(v||"").normalize("NFKC").trim().toUpperCase(); }
+
+  function startEdit(id){
+    const s = state.songs.find(x=>x.id===id); if(!s) return;
+    state.editId = id; setAdminTab("aSongs");
+    $("#sTitle").value=s.title; $("#sArtist").value=s.artist; $("#sJasrac").value=s.jasrac||""; $("#sNextone").value=s.nextone||""; $("#sStatus").value=s.status;
+    $("#addBox").open = true; $("#addSummary").textContent="曲を編集する"; $("#songSave").textContent="変更を保存"; $("#songCancel").hidden=false;
+    $("#sTitle").focus();
+  }
+  function resetSongForm(){
+    state.editId=null; $("#songForm").reset(); $("#addSummary").textContent="曲を追加する"; $("#songSave").textContent="追加する"; $("#songCancel").hidden=true;
+  }
+
+  function parseCSV(text){
+    const rows=[]; let row=[], cur="", q=false;
+    for (let i=0;i<text.length;i++){
+      const c=text[i];
+      if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+      else if(c==='"') q=true;
+      else if(c===','||c==='\t'){ row.push(cur); cur=""; }
+      else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=""; }
+      else cur+=c;
+    }
+    if(cur||row.length){ row.push(cur); rows.push(row); }
+    return rows.map(r=>r.map(x=>x.trim())).filter(r=>r.some(Boolean));
+  }
+
+  // ---------- イベント ----------
+  $$("[data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+  $$("[data-atab]").forEach(b => b.addEventListener("click", () => setAdminTab(b.dataset.atab)));
+  $("#modeListener").addEventListener("click", () => setMode("listener"));
+  $("#modeAdmin").addEventListener("click", () => setMode("admin"));
+  $("#qSongs").addEventListener("input", renderListener);
+  $("#qAdmin").addEventListener("input", renderAdmin);
+  $("#reqModePick").addEventListener("click", () => setReqMode("pick"));
+  $("#reqModeFree").addEventListener("click", () => setReqMode("free"));
+  $("#reqSong").addEventListener("change", updateReqHint);
+  $("#practiceRank").addEventListener("click", e => {
+    const b = e.target.closest("[data-req]"); if(!b) return;
+    setTab("request"); setReqMode("pick"); $("#reqSong").value = b.dataset.req; updateReqHint(); $("#reqName").focus();
+  });
+  $$("[data-rf]").forEach(b => b.addEventListener("click", () => {
+    state.rf=b.dataset.rf; $$("[data-rf]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); renderAdmin();
+  }));
+
+  $("#reqForm").addEventListener("submit", async e => {
+    e.preventDefault(); if(!state.db) return;
+    let title, artist, songId=null;
+    if (state.reqMode==="pick"){
+      const s = state.songs.find(x=>x.id===$("#reqSong").value);
+      if(!s){ toast("リクエストする曲を選んでください"); return; }
+      title=s.title; artist=s.artist; songId=s.id;
+    } else {
+      title=$("#reqTitle").value.trim(); artist=$("#reqArtist").value.trim();
+      if(!title||!artist){ toast("曲名とアーティストを入力してください"); return; }
+      const hit = state.songs.find(s=>keyOf(s.title,s.artist)===keyOf(title,artist));
+      if (hit) songId = hit.id;
+    }
+    const nickname=$("#reqName").value.trim();
+    if(!nickname){ toast("ニックネームを入力してください"); $("#reqName").focus(); return; }
+    const body = { title, artist, songId, nickname, message:$("#reqMsg").value.trim(), status:"new", createdAt:Date.now() };
+    if (state.uid) body.by = state.uid;
+    $("#reqSubmit").disabled = true;
+    await write(() => state.db.collection("requests").add(body), "リクエストを送りました");
+    $("#reqSubmit").disabled = false;
+    $("#reqMsg").value=""; $("#reqTitle").value=""; $("#reqArtist").value="";
+    try{ localStorage.setItem("utabox-nick", nickname); }catch(e){}
+  });
+
+  $("#songForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const body = { title:$("#sTitle").value.trim(), artist:$("#sArtist").value.trim(),
+      jasrac:cleanCode($("#sJasrac").value), nextone:cleanCode($("#sNextone").value), status:$("#sStatus").value };
+    if(!body.title||!body.artist) return;
+    if (state.editId){
+      const id=state.editId;
+      await write(() => state.db.doc("songs/"+id).update(body), "変更を保存しました");
+    } else {
+      if (state.songs.some(s=>keyOf(s.title,s.artist)===keyOf(body.title,body.artist))){ toast("同じ曲がすでに登録されています"); return; }
+      body.createdAt = Date.now();
+      await write(() => state.db.collection("songs").add(body), "「"+body.title+"」を追加しました");
+    }
+    resetSongForm();
+  });
+  $("#songCancel").addEventListener("click", resetSongForm);
+
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if(!b || !state.db) return;
+    const id=b.dataset.id, act=b.dataset.act;
+    if ((act==="delSong"||act==="delReq") && !b.dataset.confirm){ state.armed=act+id; renderAdmin(); setTimeout(()=>{ if(state.armed===act+id){state.armed=null;renderAdmin();} },4000); return; }
+    state.armed=null;
+    if (act==="edit") return startEdit(id);
+    if (act==="toReady") return write(()=>state.db.doc("songs/"+id).update({status:"ready"}), "歌える曲に移しました");
+    if (act==="toPractice") return write(()=>state.db.doc("songs/"+id).update({status:"practice"}), "練習中に移しました");
+    if (act==="delSong") return write(()=>state.db.doc("songs/"+id).delete(), "曲を削除しました");
+    if (act==="delReq") return write(()=>state.db.doc("requests/"+id).delete(), "リクエストを削除しました");
+    if (act==="reqDone") return write(()=>state.db.doc("requests/"+id).update({status:"done"}), "対応済みにしました");
+    if (act==="reqUndo") return write(()=>state.db.doc("requests/"+id).update({status:"new"}), "未対応に戻しました");
+    if (act==="reqToPractice"){
+      const r = state.requests.find(x=>x.id===id); if(!r) return;
+      return write(async ()=>{
+        const ref = await state.db.collection("songs").add({ title:r.title, artist:r.artist, jasrac:"", nextone:"", status:"practice", createdAt:Date.now() });
+        await state.db.doc("requests/"+id).update({ songId: ref.id });
+      }, "「"+r.title+"」を練習中に追加しました");
+    }
+  });
+
+  $("#setForm").addEventListener("submit", e => {
+    e.preventDefault(); const name=$("#setName").value.trim() || "Y";
+    write(()=>state.db.doc("settings/main").set({name}), "配信者名を保存しました");
+  });
+  $("#csvFile").addEventListener("change", async e => {
+    const f=e.target.files[0]; if(!f) return;
+    const buf = await f.arrayBuffer();
+    let text = new TextDecoder("utf-8").decode(buf);
+    if (text.includes(String.fromCharCode(0xFFFD))) { try{ text = new TextDecoder("shift_jis").decode(buf); }catch(_){} }
+    $("#csvText").value = text;
+  });
+  $("#csvForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const rows = parseCSV($("#csvText").value);
+    if (rows.length && /曲|title/i.test(rows[0][0]||"")) rows.shift();
+    const existing = new Set(state.songs.map(s=>keyOf(s.title,s.artist)));
+    let added=0, skipped=0, failed=0;
+    $("#csvMsg").textContent = "登録中…";
+    for (const r of rows){
+      const [title,artist,jasrac,nextone,kubun] = r;
+      if(!title||!artist||existing.has(keyOf(title,artist))){ skipped++; continue; }
+      try{
+        await state.db.collection("songs").add({ title, artist, jasrac:cleanCode(jasrac), nextone:cleanCode(nextone),
+          status: /練習/.test(kubun||"") ? "practice" : "ready", createdAt:Date.now() });
+        existing.add(keyOf(title,artist)); added++;
+      }catch(err){ failed++; if(err && err.code==="quota_exceeded") break; }
+    }
+    $("#csvMsg").textContent = `${added}曲を登録しました` + (skipped?`(重複・空欄で${skipped}行スキップ)`:"") + (failed?`、${failed}行は保存できませんでした`:"");
+    if (added) $("#csvText").value="";
+  });
+
+  try{ const n=localStorage.getItem("utabox-nick"); if(n) $("#reqName").value=n; }catch(e){}
+  render();
+
+  // ---------- データ接続 ----------
+  (async () => {
+    const db = await (window.claude?.use ? window.claude.use("db") : null);
+    const user = await (window.claude?.use ? window.claude.use("user") : null);
+    state.user = user;
+    if (!db){ banner("リスナーの方は claude.ai にサインインすると曲リストを見てリクエストできます。"); updateReqHint(); return; }
+    state.db = db;
+    if (user){
+      try{ state.uid = await user.id(); }catch(e){}
+      try{ state.canEdit = !!(await user.canEdit()); }catch(e){}
+      try{ const w = await user.can("data.write"); state.canWrite = (w===null||w===undefined) ? null : !!w; }catch(e){}
+    }
+    if (state.canEdit){
+      $("#modeSwitch").hidden = false;
+      let m="listener"; try{ m = localStorage.getItem("utabox-mode") || "listener"; }catch(e){}
+      setMode(m === "admin" ? "admin" : "listener");
+    }
+    db.collection("songs").onSnapshot(s => { state.songs = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); },
+      () => banner("曲リストを読み込めませんでした。ページを開き直してください。"));
+    db.collection("requests").onSnapshot(s => { state.requests = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); },
+      () => banner("リクエストを読み込めませんでした。ページを開き直してください。"));
+    db.doc("settings/main").onSnapshot(s => { if (s.exists){ state.name = s.data().name || "Y"; $("#setName").value = state.name; } render(); });
+    updateReqHint();
+  })();
+})();
+</script>
