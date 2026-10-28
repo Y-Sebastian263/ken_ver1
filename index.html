@@ -90,6 +90,14 @@ details.box{background:var(--surface);border:1px solid var(--line);border-radius
 details.box summary{cursor:pointer;font-weight:700;color:var(--ink)}
 details.box[open] summary{margin-bottom:12px}
 details.box .form{background:transparent}
+.catbox{display:grid;gap:12px}
+.catlist{display:grid;gap:6px}
+.catlist:empty{display:none}
+.cat{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 12px;background:var(--bg2);border:1px solid var(--line);border-radius:12px}
+.cat .t{font-weight:700;overflow-wrap:anywhere;min-width:0}
+.cat .a{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.cathead{font-size:13px;font-weight:700;color:var(--muted);margin:18px 0 8px;display:flex;gap:8px;align-items:center}
+.cathead::before{content:"";width:4px;height:14px;border-radius:2px;background:var(--accent)}
 h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0 8px;padding-left:12px;border-left:4px solid var(--accent)}
 @media (prefers-reduced-motion:no-preference){.row,.rank,.btn{transition:border-color .15s,background .15s,transform .1s}.row:hover,.rank:hover{border-color:#454959}.btn:active{transform:scale(.97)}}
 </style>
@@ -119,6 +127,7 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     <section class="panel" data-panel="songs">
       <div class="search"><input id="qSongs" type="search" placeholder="曲名・アーティストで検索" autocomplete="off"></div>
       <div id="songsList" class="list"></div>
+      <div id="songsCat"></div>
     </section>
 
     <section class="panel" data-panel="practice" hidden>
@@ -135,9 +144,15 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
         <label class="f" id="pickWrap">練習中の曲
           <select id="reqSong"></select>
         </label>
-        <div class="grid2" id="freeWrap" hidden>
-          <label class="f">曲名<input id="reqTitle" maxlength="100"></label>
-          <label class="f">アーティスト<input id="reqArtist" maxlength="100"></label>
+        <div id="freeWrap" class="catbox" hidden>
+          <label class="f">曲を探す <span class="opt catstat"></span>
+            <input id="reqCat" type="search" placeholder="曲名・アーティストで検索" autocomplete="off"></label>
+          <div id="reqCatList" class="catlist"></div>
+          <div class="grid2">
+            <label class="f">曲名<input id="reqTitle" maxlength="100"></label>
+            <label class="f">アーティスト<input id="reqArtist" maxlength="100"></label>
+          </div>
+          <p class="msg">見つからない曲は、曲名とアーティストを直接入力してください。</p>
         </div>
         <label class="f">ニックネーム<input id="reqName" maxlength="40" placeholder="REALITYでの名前"></label>
         <label class="f">ひとこと <span class="opt">(任意)</span><textarea id="reqMsg" maxlength="200" placeholder="この曲が好きな理由など"></textarea></label>
@@ -157,6 +172,11 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     </nav>
 
     <section class="panel" data-apanel="aSongs">
+      <details class="box" id="catBox" open>
+        <summary>曲カタログから追加する <span class="opt catstat" style="font-weight:400;color:var(--muted)"></span></summary>
+        <div class="search"><input id="aCat" type="search" placeholder="曲名・アーティストで検索" autocomplete="off"></div>
+        <div id="aCatList" class="catlist"></div>
+      </details>
       <details class="box" id="addBox">
         <summary id="addSummary">曲を追加する</summary>
         <form id="songForm" class="form" style="border:0;padding:0">
@@ -264,6 +284,12 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
       : ready.length ? `<div class="empty"><strong>「${esc($("#qSongs").value)}」は見つかりませんでした</strong>練習中の曲や新しい曲としてリクエストできます。</div>`
       : `<div class="empty"><strong>まだ曲が登録されていません</strong>配信者が管理画面から曲を追加すると、ここに並びます。</div>`;
 
+    const sc = $("#songsCat");
+    if (q && cat.ready){
+      const ch = searchCat($("#qSongs").value, 20).filter(i => !ready.some(s => keyOf(s.title,s.artist)===keyOf(cat.rows[i][0],cat.rows[i][1])));
+      sc.innerHTML = ch.length ? `<div class="cathead">曲カタログ(まだ歌えない曲・リクエストできます)</div><div class="catlist">${ch.map(i => catRow(i, `<button class="btn" type="button" data-cpick="${i}">リクエスト</button>`)).join("")}</div>` : "";
+    } else sc.innerHTML = "";
+
     const ranked = requestCounts();
     $("#nPractice").textContent = ranked.length;
     const max = Math.max(1, ...ranked.map(r=>r.count));
@@ -370,7 +396,7 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     try{ localStorage.setItem("utabox-mode", m); }catch(e){}
     render();
   }
-  function render(){ $("#streamerName").textContent = state.name || "Ken"; renderListener(); renderAdmin(); }
+  function render(){ if (cat.ready){ renderCat("aCat","aCatList","admin"); } $("#streamerName").textContent = state.name || "Ken"; renderListener(); renderAdmin(); }
 
   // ---------- 書き込み ----------
   async function write(fn, okMsg){
@@ -408,6 +434,67 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
     if(cur||row.length){ row.push(cur); rows.push(row); }
     return rows.map(r=>r.map(x=>x.trim())).filter(r=>r.some(Boolean));
   }
+
+  // ---------- 曲カタログ(catalog.json: [曲名, アーティスト, 発売年] の配列、人気順) ----------
+  const cat = { rows: [], idx: [], ready: false, failed: false };
+  function catStatus(){
+    const t = cat.ready ? `(${cat.rows.length.toLocaleString()}曲)` : cat.failed ? "(読み込めませんでした)" : "(読み込み中…)";
+    $$(".catstat").forEach(e => e.textContent = t);
+  }
+  async function loadCatalog(){
+    catStatus();
+    try{
+      const r = await fetch("catalog.json"); if(!r.ok) throw 0;
+      cat.rows = await r.json();
+      cat.idx = cat.rows.map(x => norm(x[0]) + "\u0001" + norm(x[1]));
+      cat.ready = true;
+    }catch(e){ cat.failed = true; }
+    catStatus(); renderListener(); renderCat("aCat","aCatList","admin"); renderCat("reqCat","reqCatList","req");
+  }
+  function searchCat(qRaw, n){
+    const q = norm(qRaw); if(!q || !cat.ready) return [];
+    const pre = [], mid = [];
+    for (let i=0;i<cat.idx.length && pre.length<n;i++){
+      const s = cat.idx[i]; const k = s.indexOf(q); if(k<0) continue;
+      if (k===0 || s[k-1]==="\u0001") pre.push(i); else if (mid.length<n) mid.push(i);
+    }
+    return pre.concat(mid).slice(0,n);
+  }
+  function catRow(i, btns){
+    const [t,a,y] = cat.rows[i];
+    return `<div class="cat"><div style="min-width:0"><div class="t">${esc(t)}</div><div class="a">${esc(a)}${y?`<span class="yr">${esc(y)}</span>`:""}</div></div><div class="acts">${btns}</div></div>`;
+  }
+  function renderCat(inputId, listId, kind){
+    const el = $("#"+listId); const q = $("#"+inputId).value;
+    if (!q.trim()){ el.innerHTML=""; return; }
+    if (!cat.ready){ el.innerHTML = `<p class="msg">${cat.failed?"曲カタログを読み込めませんでした。":"曲カタログを読み込み中です…"}</p>`; return; }
+    const hits = searchCat(q, 30);
+    if (!hits.length){ el.innerHTML = `<p class="msg">カタログに見つかりませんでした。</p>`; return; }
+    el.innerHTML = hits.map(i => {
+      const inRep = state.songs.find(s => keyOf(s.title,s.artist)===keyOf(cat.rows[i][0],cat.rows[i][1]));
+      if (kind==="admin") return catRow(i, inRep ? `<span class="pill ${inRep.status}">${inRep.status==="ready"?"歌える":"練習中"}</span>`
+        : `<button class="btn" type="button" data-cadd="ready" data-ci="${i}">歌える曲に</button><button class="btn ghost" type="button" data-cadd="practice" data-ci="${i}">練習中に</button>`);
+      return catRow(i, inRep && inRep.status==="ready" ? `<span class="pill ready">歌える</span>` : `<button class="btn" type="button" data-cpick="${i}">これを選ぶ</button>`);
+    }).join("");
+  }
+  const debounce = (fn, ms=150) => { let t; return () => { clearTimeout(t); t=setTimeout(fn, ms); }; };
+  $("#aCat").addEventListener("input", debounce(() => renderCat("aCat","aCatList","admin")));
+  $("#reqCat").addEventListener("input", debounce(() => renderCat("reqCat","reqCatList","req")));
+  function pickCatalog(i){
+    const [t,a] = cat.rows[i];
+    setTab("request"); setReqMode("free");
+    $("#reqTitle").value = t; $("#reqArtist").value = a; $("#reqCat").value = t;
+    renderCat("reqCat","reqCatList","req"); $("#reqName").focus();
+  }
+  document.addEventListener("click", e => {
+    const p = e.target.closest("[data-cpick]"); if (p) return pickCatalog(+p.dataset.cpick);
+    const c = e.target.closest("[data-cadd]"); if (!c || !state.db) return;
+    const [title, artist, year] = cat.rows[+c.dataset.ci];
+    if (state.songs.some(s => keyOf(s.title,s.artist)===keyOf(title,artist))) return toast("すでに登録されています");
+    const status = c.dataset.cadd;
+    write(() => state.db.collection("songs").add({ title, artist, jasrac:"", nextone:"", status, year: year||null, createdAt: Date.now() }),
+      "「"+title+"」を"+(status==="ready"?"歌える曲":"練習中")+"に追加しました");
+  });
 
   // ---------- イベント ----------
   $$("[data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
@@ -527,6 +614,7 @@ h2.sub{font-family:var(--f-display);font-weight:900;font-size:19px;margin:26px 0
 
   try{ const n=localStorage.getItem("utabox-nick"); if(n) $("#reqName").value=n; }catch(e){}
   render();
+  loadCatalog();
 
   // ---------- データ接続 ----------
   (async () => {
